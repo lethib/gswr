@@ -1,12 +1,11 @@
-use std::io::{Stdout, stdout};
+use std::io::stdout;
 
 use crossterm::{
   event::{self, Event, KeyCode, KeyModifiers},
-  execute,
-  terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+  terminal::{disable_raw_mode, enable_raw_mode},
 };
 use git2::Repository;
-use ratatui::{Terminal, prelude::CrosstermBackend};
+use ratatui::{Terminal, TerminalOptions, Viewport, prelude::CrosstermBackend};
 
 use crate::{
   app::{App, GSWActions},
@@ -20,23 +19,28 @@ pub mod ui;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   let current_repo = Repository::discover(".")?;
   let branches = current_repo.list_branches()?;
+
+  let height = (branches.len() as u16 + 4).min(20).max(6);
   let mut app = App::new(branches);
-  let mut stdout = stdout();
 
   enable_raw_mode()?;
-  execute!(stdout, EnterAlternateScreen)?;
-  let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
+  let mut terminal = Terminal::with_options(
+    CrosstermBackend::new(stdout()),
+    TerminalOptions {
+      viewport: Viewport::Inline(height),
+    },
+  )?;
 
   run_loop(&mut terminal, &mut app, &current_repo)?;
 
+  terminal.clear()?;
   disable_raw_mode()?;
-  execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
 
   Ok(())
 }
 
 fn run_loop(
-  terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+  terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
   app: &mut App,
   repo: &Repository,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -47,8 +51,8 @@ fn run_loop(
       match (pressed_key.code, pressed_key.modifiers) {
         (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,
 
-        (KeyCode::Up, _) => app.prev(),
-        (KeyCode::Down, _) => app.next(),
+        (KeyCode::Up, _) | (KeyCode::Char('k'), _) => app.prev(),
+        (KeyCode::Down, _) | (KeyCode::Char('j'), _) => app.next(),
 
         (KeyCode::Enter, _) => match app.confirm() {
           GSWActions::Checkout(branch_name) => {
