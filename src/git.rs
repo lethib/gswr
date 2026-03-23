@@ -8,12 +8,12 @@ pub struct BranchInfo {
   pub last_commit_msg: Option<String>,
 }
 
-pub trait GSWGitActions {
+pub trait GSWRGitActions {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error>;
   fn checkout(&self, branch_name: &str) -> Result<(), git2::Error>;
 }
 
-impl GSWGitActions for Repository {
+impl GSWRGitActions for Repository {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error> {
     let mut local_branches = self
       .branches(Some(BranchType::Local))?

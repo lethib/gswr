@@ -1,6 +1,6 @@
 use crate::git::BranchInfo;
 
-pub enum GSWActions {
+pub enum GSWRActions {
   Checkout(String),
   Quit,
   None,
@@ -31,11 +31,11 @@ impl App {
     }
   }
 
-  pub fn confirm(&self) -> GSWActions {
+  pub fn confirm(&self) -> GSWRActions {
     match self.local_branches.get(self.selected as usize) {
-      Some(branch) if branch.is_current => GSWActions::Quit,
-      Some(branch) => GSWActions::Checkout(branch.name.clone()),
-      None => GSWActions::Quit,
+      Some(branch) if branch.is_current => GSWRActions::Quit,
+      Some(branch) => GSWRActions::Checkout(branch.name.clone()),
+      None => GSWRActions::Quit,
     }
   }
 }

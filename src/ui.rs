@@ -57,7 +57,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(BORDER))
-        .title(Line::from(Span::styled(" gsw ", Style::default().fg(ACCENT).bold())))
+        .title(Line::from(Span::styled(
+          " gswr ",
+          Style::default().fg(ACCENT).bold(),
+        )))
         .title_alignment(Alignment::Left),
     )
     .highlight_style(
@@ -86,7 +89,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
   if !hint.is_empty() {
     footer_spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
-    footer_spans.push(Span::styled(hint, Style::default().fg(TEXT).add_modifier(Modifier::ITALIC)));
+    footer_spans.push(Span::styled(
+      hint,
+      Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+    ));
   }
 
   let footer = Paragraph::new(Line::from(footer_spans));

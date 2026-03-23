@@ -8,8 +8,8 @@ use git2::Repository;
 use ratatui::{Terminal, TerminalOptions, Viewport, prelude::CrosstermBackend};
 
 use crate::{
-  app::{App, GSWActions},
-  git::GSWGitActions,
+  app::{App, GSWRActions},
+  git::GSWRGitActions,
 };
 
 pub mod app;
@@ -55,12 +55,12 @@ fn run_loop(
         (KeyCode::Down, _) | (KeyCode::Char('j'), _) => app.next(),
 
         (KeyCode::Enter, _) => match app.confirm() {
-          GSWActions::Checkout(branch_name) => {
+          GSWRActions::Checkout(branch_name) => {
             repo.checkout(&branch_name)?;
             break;
           }
-          GSWActions::Quit => break,
-          GSWActions::None => {}
+          GSWRActions::Quit => break,
+          GSWRActions::None => {}
         },
         _ => {}
       }
