@@ -6,11 +6,13 @@ pub struct BranchInfo {
   pub is_current: bool,
   pub last_commit_date: Option<DateTime<Local>>,
   pub last_commit_msg: Option<String>,
+  pub pr_title: Option<String>,
 }
 
 pub trait GSWRGitActions {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error>;
   fn checkout(&self, branch_name: &str) -> Result<(), git2::Error>;
+  fn extract_owner_repo(&self) -> Result<(String, String), git2::Error>;
 }
 
 impl GSWRGitActions for Repository {
@@ -39,6 +41,7 @@ impl GSWRGitActions for Repository {
           is_current: branch.is_head(),
           last_commit_date,
           last_commit_msg,
+          pr_title: None,
         })
       })
       .collect::<Result<Vec<BranchInfo>, _>>()?;
@@ -66,5 +69,34 @@ impl GSWRGitActions for Repository {
       }
       None => Err(git2::Error::from_str("no_git_reference")),
     }
+  }
+
+  fn extract_owner_repo(&self) -> Result<(String, String), git2::Error> {
+    let remote = self.find_remote("origin")?;
+
+    let remote_url = remote
+      .url()
+      .ok_or(git2::Error::from_str("no URL for remote"))?;
+
+    let path = if remote_url.contains("github.com:") {
+      remote_url.split("github.com:").nth(1)
+    } else {
+      remote_url.split("github.com/").nth(1)
+    };
+
+    let path = path
+      .ok_or(git2::Error::from_str("no_path_found"))?
+      .trim_end_matches(".git");
+    let mut parts = path.splitn(2, '/');
+    let owner = parts
+      .next()
+      .ok_or(git2::Error::from_str("no_owner_found"))?
+      .to_string();
+    let repo_name = parts
+      .next()
+      .ok_or(git2::Error::from_str("no_repo_name_found"))?
+      .to_string();
+
+    Ok((owner, repo_name))
   }
 }
