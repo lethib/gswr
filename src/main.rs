@@ -17,7 +17,7 @@ pub mod git;
 pub mod git_platforms;
 pub mod ui;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), GSWRError> {
   let current_repo = Repository::discover(".")?;
   let branches = current_repo.list_branches()?;
 
@@ -53,7 +53,7 @@ fn run_loop(
   terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
   app: &mut App,
   repo: &Repository,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), GSWRError> {
   loop {
     app.drain_pr_updates();
     if app.pr_rx.is_some() {
@@ -84,4 +84,36 @@ fn run_loop(
   }
 
   Ok(())
+}
+
+struct GSWRError {
+  message: String,
+}
+
+impl std::fmt::Debug for GSWRError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "❌ {}", self.message)
+  }
+}
+
+impl std::fmt::Display for GSWRError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "❌ {}", self.message)
+  }
+}
+
+impl From<git2::Error> for GSWRError {
+  fn from(value: git2::Error) -> Self {
+    GSWRError {
+      message: value.message().to_string(),
+    }
+  }
+}
+
+impl From<std::io::Error> for GSWRError {
+  fn from(value: std::io::Error) -> Self {
+    GSWRError {
+      message: value.to_string(),
+    }
+  }
 }
