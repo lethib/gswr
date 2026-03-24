@@ -24,18 +24,14 @@ pub fn fetch_open_pr_titles(
     owner, repo
   );
 
-  let client = reqwest::blocking::Client::new();
-  let repo_prs = client
-    .get(&url)
-    .header(
-      "Authorization",
-      format!("Bearer {}", std::env::var("GITHUB_TOKEN")?),
-    )
-    .header("User-Agent", "gswr")
-    .header("Accept", "application/vnd.github+json")
-    .header("X-GitHub-Api-Version", "2026-03-10")
-    .send()
-    .and_then(|response| response.json::<Vec<PullRequest>>())?;
+  let token = std::env::var("GITHUB_TOKEN")?;
+  let repo_prs: Vec<PullRequest> = ureq::get(&url)
+    .set("Authorization", &format!("Bearer {}", token))
+    .set("User-Agent", "gswr")
+    .set("Accept", "application/vnd.github+json")
+    .set("X-GitHub-Api-Version", "2026-03-10")
+    .call()?
+    .into_json()?;
 
   for pr in repo_prs {
     if tx.send((pr.head.ref_name, pr.title)).is_err() {
