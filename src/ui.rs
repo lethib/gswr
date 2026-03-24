@@ -79,7 +79,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(BORDER))
         .title(Line::from(Span::styled(
-          " gswr ",
+          format!(
+            " gswr v{} ",
+            std::env::var("CARGO_PKG_VERSION").unwrap_or("undefined".to_string())
+          ),
           Style::default().fg(ACCENT).bold(),
         )))
         .title_alignment(Alignment::Left),
