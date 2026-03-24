@@ -6,6 +6,8 @@ use ratatui::{
   widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
 };
 
+use throbber_widgets_tui::BOX_DRAWING;
+
 use crate::app::App;
 
 const ACCENT: Color = Color::Rgb(130, 170, 255);
@@ -32,9 +34,15 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
       let name = &branch.name;
 
+      let spinner_sym = {
+        let idx = (app.throbber_state.index() as isize)
+          .rem_euclid(BOX_DRAWING.symbols.len() as isize) as usize;
+        BOX_DRAWING.symbols[idx]
+      };
+
       let pr_span = match &branch.pr_title {
-        None => Span::styled(" ⟳", Style::default().fg(MUTED)),
-        Some(t) if t.is_empty() => Span::raw("  No open PR"),
+        None => Span::styled(format!(" {}", spinner_sym), Style::default().fg(MUTED)),
+        Some(t) if t.is_empty() => Span::styled("  No open PR", Style::default().fg(MUTED)),
         Some(title) => Span::styled(
           format!("  {}", title),
           Style::default()

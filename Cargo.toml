@@ -8,6 +8,7 @@ chrono = { version = "0.4.44", default-features = false, features = ["std", "clo
 crossterm = "0.29.0"
 git2 = { version = "0.20.4", default-features = false }
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
+throbber-widgets-tui = { version = "0.11", default-features = false }
 ureq = { version = "2", default-features = false, features = ["json", "tls"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
