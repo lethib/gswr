@@ -1,8 +1,9 @@
 [package]
 name = "gswr"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 repository = "https://github.com/lethib/gswr"
+publish = true
 
 [dependencies]
 chrono = { version = "0.4.44", default-features = false, features = ["std", "clock"] }
