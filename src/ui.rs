@@ -81,7 +81,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .title(Line::from(Span::styled(
           format!(
             " gswr v{} ",
-            std::env::var("CARGO_PKG_VERSION").unwrap_or("undefined".to_string())
+            env!("CARGO_PKG_VERSION")
           ),
           Style::default().fg(ACCENT).bold(),
         )))
