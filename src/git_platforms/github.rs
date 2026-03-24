@@ -31,6 +31,7 @@ pub fn fetch_open_pr_titles(
       "Authorization",
       format!("Bearer {}", std::env::var("GITHUB_TOKEN")?),
     )
+    .header("User-Agent", "gswr")
     .header("Accept", "application/vnd.github+json")
     .header("X-GitHub-Api-Version", "2026-03-10")
     .send()
