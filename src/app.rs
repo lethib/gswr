@@ -12,6 +12,7 @@ pub struct App {
   pub local_branches: Vec<BranchInfo>,
   pub selected: u8,
   pub pr_rx: Option<Receiver<(String, String)>>,
+  pub throbber_state: throbber_widgets_tui::ThrobberState,
 }
 
 impl App {
@@ -20,6 +21,7 @@ impl App {
       local_branches: branches,
       selected: 0,
       pr_rx,
+      throbber_state: throbber_widgets_tui::ThrobberState::default(),
     }
   }
 

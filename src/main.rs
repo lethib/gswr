@@ -56,6 +56,9 @@ fn run_loop(
 ) -> Result<(), Box<dyn std::error::Error>> {
   loop {
     app.drain_pr_updates();
+    if app.pr_rx.is_some() {
+      app.throbber_state.calc_next();
+    }
     terminal.draw(|frame| ui::draw(frame, app))?;
 
     if event::poll(Duration::from_millis(50))? {
