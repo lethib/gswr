@@ -32,17 +32,30 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
       let name = &branch.name;
 
+      let pr_span = match &branch.pr_title {
+        None => Span::styled(" ⟳", Style::default().fg(MUTED)),
+        Some(t) if t.is_empty() => Span::raw("  No open PR"),
+        Some(title) => Span::styled(
+          format!("  {}", title),
+          Style::default()
+            .fg(Color::Rgb(180, 150, 255))
+            .add_modifier(Modifier::ITALIC),
+        ),
+      };
+
       if branch.is_current {
         ListItem::new(Line::from(vec![
           Span::styled(" ● ", Style::default().fg(CURRENT).bold()),
           Span::styled(name.as_str(), Style::default().fg(CURRENT).bold()),
           Span::styled(format!("  {}", commit_date), Style::default().fg(MUTED)),
+          pr_span,
         ]))
       } else {
         ListItem::new(Line::from(vec![
           Span::styled("   ", Style::default()),
           Span::styled(name.as_str(), Style::default().fg(TEXT)),
           Span::styled(format!("  {}", commit_date), Style::default().fg(MUTED)),
+          pr_span,
         ]))
       }
     })
