@@ -3,7 +3,7 @@ use ratatui::{
   layout::{Alignment, Constraint, Direction, Layout},
   style::{Color, Modifier, Style},
   text::{Line, Span},
-  widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+  widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState},
 };
 
 use throbber_widgets_tui::BOX_DRAWING;
@@ -17,13 +17,31 @@ const SELECTED_BG: Color = Color::Rgb(35, 45, 65);
 const TEXT: Color = Color::Rgb(190, 200, 220);
 const BORDER: Color = Color::Rgb(55, 65, 85);
 
+fn truncate(s: &str, max_chars: usize) -> String {
+  if max_chars == 0 {
+    return String::new();
+  }
+  if s.chars().count() <= max_chars {
+    s.to_string()
+  } else {
+    let truncated: String = s.chars().take(max_chars - 1).collect();
+    format!("{}…", truncated)
+  }
+}
+
 pub fn draw(frame: &mut Frame, app: &App) {
   let chunks = Layout::default()
     .direction(Direction::Vertical)
     .constraints([Constraint::Min(0), Constraint::Length(2)])
     .split(frame.area());
 
-  let branches = app
+  // 2 border chars + 2 column spacing chars (1 gap between each of the 3 columns)
+  let inner_width = (frame.area().width as usize).saturating_sub(4);
+  let col1_max = inner_width * 20 / 100;
+  let col2_max = inner_width * 7 / 100;
+  let col3_max = inner_width.saturating_sub(col1_max).saturating_sub(col2_max);
+
+  let rows = app
     .local_branches
     .iter()
     .map(|branch| {
@@ -32,19 +50,17 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .map(|d| d.format("%Y-%m-%d").to_string())
         .unwrap_or_else(|| "---".to_string());
 
-      let name = &branch.name;
-
       let spinner_sym = {
         let idx = (app.throbber_state.index() as isize)
           .rem_euclid(BOX_DRAWING.symbols.len() as isize) as usize;
         BOX_DRAWING.symbols[idx]
       };
 
-      let pr_span = match &branch.pr_title {
-        None => Span::styled(format!(" {}", spinner_sym), Style::default().fg(MUTED)),
-        Some(t) if t.is_empty() => Span::styled("  No open PR", Style::default().fg(MUTED)),
-        Some(title) => Span::styled(
-          format!("  {}", title),
+      let (pr_text, pr_style) = match &branch.pr_title {
+        None => (format!(" {}", spinner_sym), Style::default().fg(MUTED)),
+        Some(t) if t.is_empty() => ("No open PR".to_string(), Style::default().fg(MUTED)),
+        Some(title) => (
+          title.clone(),
           Style::default()
             .fg(Color::Rgb(180, 150, 255))
             .add_modifier(Modifier::ITALIC),
@@ -52,48 +68,50 @@ pub fn draw(frame: &mut Frame, app: &App) {
       };
 
       if branch.is_current {
-        ListItem::new(Line::from(vec![
-          Span::styled(" ● ", Style::default().fg(CURRENT).bold()),
-          Span::styled(name.as_str(), Style::default().fg(CURRENT).bold()),
-          Span::styled(format!("  {}", commit_date), Style::default().fg(MUTED)),
-          pr_span,
-        ]))
+        Row::new(vec![
+          Cell::from(truncate(&format!(" ● {}", branch.name), col1_max)).style(Style::default().fg(CURRENT).bold()),
+          Cell::from(truncate(&commit_date, col2_max)).style(Style::default().fg(MUTED)),
+          Cell::from(truncate(&pr_text, col3_max)).style(pr_style),
+        ])
       } else {
-        ListItem::new(Line::from(vec![
-          Span::styled("   ", Style::default()),
-          Span::styled(name.as_str(), Style::default().fg(TEXT)),
-          Span::styled(format!("  {}", commit_date), Style::default().fg(MUTED)),
-          pr_span,
-        ]))
+        Row::new(vec![
+          Cell::from(truncate(&format!("   {}", branch.name), col1_max)).style(Style::default().fg(TEXT)),
+          Cell::from(truncate(&commit_date, col2_max)).style(Style::default().fg(MUTED)),
+          Cell::from(truncate(&pr_text, col3_max)).style(pr_style),
+        ])
       }
     })
-    .collect::<Vec<ListItem>>();
+    .collect::<Vec<Row>>();
 
-  let mut list_state = ListState::default();
-  list_state.select(Some(app.selected as usize));
+  let mut table_state = TableState::default();
+  table_state.select(Some(app.selected as usize));
 
-  let list = List::new(branches)
-    .block(
-      Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(BORDER))
-        .title(Line::from(Span::styled(
-          format!(
-            " gswr v{} ",
-            env!("CARGO_PKG_VERSION")
-          ),
-          Style::default().fg(ACCENT).bold(),
-        )))
-        .title_alignment(Alignment::Left),
-    )
-    .highlight_style(
-      Style::default()
-        .bg(SELECTED_BG)
-        .add_modifier(Modifier::BOLD),
-    );
+  let table = Table::new(
+    rows,
+    [
+      Constraint::Length(col1_max as u16),
+      Constraint::Length(col2_max as u16),
+      Constraint::Length(col3_max as u16),
+    ],
+  )
+  .block(
+    Block::default()
+      .borders(Borders::ALL)
+      .border_type(BorderType::Rounded)
+      .border_style(Style::default().fg(BORDER))
+      .title(Line::from(Span::styled(
+        format!(" gswr v{} ", env!("CARGO_PKG_VERSION")),
+        Style::default().fg(ACCENT).bold(),
+      )))
+      .title_alignment(Alignment::Left),
+  )
+  .row_highlight_style(
+    Style::default()
+      .bg(SELECTED_BG)
+      .add_modifier(Modifier::BOLD),
+  );
 
-  frame.render_stateful_widget(list, chunks[0], &mut list_state);
+  frame.render_stateful_widget(table, chunks[0], &mut table_state);
 
   let hint = app
     .local_branches
