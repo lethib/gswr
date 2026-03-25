@@ -2,6 +2,8 @@
 
 A fast, minimal terminal UI for switching Git branches — with GitHub PR titles shown inline.
 
+<img src="https://8upload.com/image/59163cea43f374fa/gswr_demo.gif">
+
 ## Features
 
 - Browse and switch local branches from an inline terminal panel
