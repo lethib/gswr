@@ -86,34 +86,39 @@ fn run_loop(
   Ok(())
 }
 
-struct GSWRError {
-  message: String,
+#[derive(Clone)]
+pub enum GSWRError {
+  #[allow(non_camel_case_types)]
+  PR_NOT_FOUND,
+  Custom(String),
 }
 
 impl std::fmt::Debug for GSWRError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "❌ {}", self.message)
+    match self {
+      GSWRError::PR_NOT_FOUND => write!(f, "❌ PR not found"),
+      GSWRError::Custom(msg) => write!(f, "❌ {}", msg),
+    }
   }
 }
 
 impl std::fmt::Display for GSWRError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "❌ {}", self.message)
+    match self {
+      GSWRError::PR_NOT_FOUND => write!(f, "❌ PR not found"),
+      GSWRError::Custom(msg) => write!(f, "❌ {}", msg),
+    }
   }
 }
 
 impl From<git2::Error> for GSWRError {
   fn from(value: git2::Error) -> Self {
-    GSWRError {
-      message: value.message().to_string(),
-    }
+    GSWRError::Custom(value.message().to_string())
   }
 }
 
 impl From<std::io::Error> for GSWRError {
   fn from(value: std::io::Error) -> Self {
-    GSWRError {
-      message: value.to_string(),
-    }
+    GSWRError::Custom(value.to_string())
   }
 }

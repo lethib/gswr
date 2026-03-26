@@ -1,12 +1,29 @@
 use chrono::{DateTime, Local, TimeZone};
 use git2::{BranchType, Repository};
 
+use crate::GSWRError;
+
+#[derive(Clone)]
+pub enum PRStatus {
+  OPENED,
+  MERGED,
+  CLOSED,
+}
+
+#[derive(Clone)]
+pub struct PR {
+  pub title: String,
+  pub status: PRStatus,
+}
+
+pub type PRResult = Result<Option<PR>, GSWRError>;
+
 pub struct BranchInfo {
   pub name: String,
   pub is_current: bool,
   pub last_commit_date: Option<DateTime<Local>>,
   pub last_commit_msg: Option<String>,
-  pub pr_title: Option<String>,
+  pub pr: PRResult,
 }
 
 pub trait GSWRGitActions {
@@ -41,7 +58,7 @@ impl GSWRGitActions for Repository {
           is_current: branch.is_head(),
           last_commit_date,
           last_commit_msg,
-          pr_title: None,
+          pr: Ok(None),
         })
       })
       .collect::<Result<Vec<BranchInfo>, _>>()?;

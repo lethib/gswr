@@ -2,10 +2,26 @@ use std::sync::mpsc::Sender;
 
 use serde::Deserialize;
 
+use crate::{
+  GSWRError,
+  app::BranchPRUpdate,
+  git::{PR, PRStatus},
+};
+
+#[derive(Deserialize)]
+enum PRState {
+  #[serde(rename = "open")]
+  OPEN,
+  #[serde(rename = "closed")]
+  CLOSED,
+}
+
 #[derive(Deserialize)]
 struct PullRequest {
   title: String,
   head: PRHead,
+  state: PRState,
+  merged_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -14,30 +30,67 @@ struct PRHead {
   ref_name: String,
 }
 
-pub fn fetch_open_pr_titles(
-  owner: &str,
-  repo: &str,
-  tx: Sender<(String, String)>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<BranchPRUpdate>) {
   let url = format!(
-    "https://api.github.com/repos/{}/{}/pulls?state=open&per_page=100",
+    "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
     owner, repo
   );
 
-  let token = std::env::var("GITHUB_TOKEN")?;
-  let repo_prs: Vec<PullRequest> = ureq::get(&url)
+  let token = match std::env::var("GITHUB_TOKEN") {
+    Ok(t) => t,
+    Err(e) => {
+      let _ = tx.send(BranchPRUpdate {
+        branch_name: None,
+        pr_result: Err(GSWRError::Custom(format!("GITHUB_TOKEN {}", e))),
+      });
+      return;
+    }
+  };
+
+  let response = match ureq::get(&url)
     .set("Authorization", &format!("Bearer {}", token))
     .set("User-Agent", "gswr")
     .set("Accept", "application/vnd.github+json")
     .set("X-GitHub-Api-Version", "2026-03-10")
-    .call()?
-    .into_json()?;
+    .call()
+  {
+    Ok(r) => r,
+    Err(e) => {
+      let _ = tx.send(BranchPRUpdate {
+        branch_name: None,
+        pr_result: Err(GSWRError::Custom(e.to_string())),
+      });
+      return;
+    }
+  };
+
+  let repo_prs: Vec<PullRequest> = match response.into_json() {
+    Ok(prs) => prs,
+    Err(e) => {
+      let _ = tx.send(BranchPRUpdate {
+        branch_name: None,
+        pr_result: Err(GSWRError::from(e)),
+      });
+      return;
+    }
+  };
 
   for pr in repo_prs {
-    if tx.send((pr.head.ref_name, pr.title)).is_err() {
+    if tx
+      .send(BranchPRUpdate {
+        branch_name: Some(pr.head.ref_name),
+        pr_result: Ok(Some(PR {
+          title: pr.title,
+          status: match pr.state {
+            PRState::OPEN => PRStatus::OPENED,
+            PRState::CLOSED if pr.merged_at.is_some() => PRStatus::MERGED,
+            PRState::CLOSED => PRStatus::CLOSED,
+          },
+        })),
+      })
+      .is_err()
+    {
       break;
     }
   }
-
-  Ok(())
 }

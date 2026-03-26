@@ -1,6 +1,9 @@
 use std::sync::mpsc::{Receiver, TryRecvError};
 
-use crate::git::BranchInfo;
+use crate::{
+  GSWRError,
+  git::{BranchInfo, PRResult},
+};
 
 pub enum GSWRActions {
   Checkout(String),
@@ -8,15 +11,20 @@ pub enum GSWRActions {
   None,
 }
 
+pub struct BranchPRUpdate {
+  pub branch_name: Option<String>,
+  pub pr_result: PRResult,
+}
+
 pub struct App {
   pub local_branches: Vec<BranchInfo>,
   pub selected: u8,
-  pub pr_rx: Option<Receiver<(String, String)>>,
+  pub pr_rx: Option<Receiver<BranchPRUpdate>>,
   pub throbber_state: throbber_widgets_tui::ThrobberState,
 }
 
 impl App {
-  pub fn new(branches: Vec<BranchInfo>, pr_rx: Option<Receiver<(String, String)>>) -> Self {
+  pub fn new(branches: Vec<BranchInfo>, pr_rx: Option<Receiver<BranchPRUpdate>>) -> Self {
     App {
       local_branches: branches,
       selected: 0,
@@ -50,20 +58,28 @@ impl App {
 
     loop {
       match rx.try_recv() {
-        Ok((branch_name, pr_title)) => {
-          if let Some(branch) = self
-            .local_branches
-            .iter_mut()
-            .find(|b| b.name == branch_name)
-          {
-            branch.pr_title = Some(pr_title)
+        Ok(msg) => match msg.branch_name {
+          Some(branch_name) => {
+            if let Some(branch) = self
+              .local_branches
+              .iter_mut()
+              .find(|b| b.name == branch_name)
+            {
+              branch.pr = msg.pr_result;
+            }
           }
-        }
+          None => {
+            self
+              .local_branches
+              .iter_mut()
+              .for_each(|branch| branch.pr = msg.pr_result.clone());
+          }
+        },
         Err(TryRecvError::Disconnected) => {
           // Thread over: branches still None have no open PR
           for branch in self.local_branches.iter_mut() {
-            if branch.pr_title.is_none() {
-              branch.pr_title = Some(String::new());
+            if branch.pr.as_ref().is_ok_and(|b| b.is_none()) {
+              branch.pr = Err(GSWRError::PR_NOT_FOUND);
             }
           }
           self.pr_rx = None;
