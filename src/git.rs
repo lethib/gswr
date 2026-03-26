@@ -3,7 +3,7 @@ use git2::{BranchType, Repository};
 
 use crate::GSWRError;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum PRStatus {
   OPENED,
   MERGED,
@@ -30,6 +30,7 @@ pub trait GSWRGitActions {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error>;
   fn checkout(&self, branch_name: &str) -> Result<(), git2::Error>;
   fn extract_owner_repo(&self) -> Result<(String, String), git2::Error>;
+  fn delete_branch(&self, branch_name: &str) -> Result<(), git2::Error>;
 }
 
 impl GSWRGitActions for Repository {
@@ -115,5 +116,17 @@ impl GSWRGitActions for Repository {
       .to_string();
 
     Ok((owner, repo_name))
+  }
+
+  fn delete_branch(&self, branch_name: &str) -> Result<(), git2::Error> {
+    let mut branch_to_delete = self.find_branch(branch_name, BranchType::Local)?;
+
+    if branch_to_delete.is_head() {
+      return Err(git2::Error::from_str("cannot delete current branch"));
+    }
+
+    branch_to_delete.delete()?;
+
+    Ok(())
   }
 }

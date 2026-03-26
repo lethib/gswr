@@ -77,6 +77,9 @@ fn run_loop(
             GSWRActions::Quit => break,
             GSWRActions::None => {}
           },
+
+          (KeyCode::Char('s'), KeyModifiers::CONTROL) => app.sync(repo),
+
           _ => {}
         }
       }
