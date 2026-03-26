@@ -8,7 +8,7 @@ use ratatui::{
 
 use throbber_widgets_tui::BOX_DRAWING;
 
-use crate::app::App;
+use crate::{GSWRError, app::App, git::PRStatus};
 
 const ACCENT: Color = Color::Rgb(130, 170, 255);
 const CURRENT: Color = Color::Rgb(100, 210, 130);
@@ -24,7 +24,7 @@ fn truncate(s: &str, max_chars: usize) -> String {
   if s.chars().count() <= max_chars {
     s.to_string()
   } else {
-    let truncated: String = s.chars().take(max_chars - 1).collect();
+    let truncated: String = s.chars().take(max_chars - 3).collect();
     format!("{}…", truncated)
   }
 }
@@ -35,11 +35,15 @@ pub fn draw(frame: &mut Frame, app: &App) {
     .constraints([Constraint::Min(0), Constraint::Length(2)])
     .split(frame.area());
 
-  // 2 border chars + 2 column spacing chars (1 gap between each of the 3 columns)
-  let inner_width = (frame.area().width as usize).saturating_sub(4);
+  // 2 border chars + 3 column spacing chars (1 gap between each of the 4 columns)
+  let inner_width = (frame.area().width as usize).saturating_sub(5);
   let col1_max = inner_width * 20 / 100;
-  let col2_max = inner_width * 7 / 100;
-  let col3_max = inner_width.saturating_sub(col1_max).saturating_sub(col2_max);
+  let col2_max: usize = 12; // "2026-03-25" + padding
+  let col3_status: usize = 3;
+  let col4_max = inner_width
+    .saturating_sub(col1_max)
+    .saturating_sub(col2_max)
+    .saturating_sub(col3_status);
 
   let rows = app
     .local_branches
@@ -56,28 +60,51 @@ pub fn draw(frame: &mut Frame, app: &App) {
         BOX_DRAWING.symbols[idx]
       };
 
-      let (pr_text, pr_style) = match &branch.pr_title {
-        None => (format!(" {}", spinner_sym), Style::default().fg(MUTED)),
-        Some(t) if t.is_empty() => ("No open PR".to_string(), Style::default().fg(MUTED)),
-        Some(title) => (
-          title.clone(),
-          Style::default()
-            .fg(Color::Rgb(180, 150, 255))
-            .add_modifier(Modifier::ITALIC),
-        ),
+      let (status_cell, pr_text, pr_style) = match &branch.pr {
+        Ok(pr) => match pr {
+          None => (
+            Cell::from(""),
+            format!(" {}", spinner_sym),
+            Style::default().fg(MUTED),
+          ),
+          Some(defined_pr) => {
+            let (letter, color) = match defined_pr.status {
+              PRStatus::OPENED => ("O", Color::Rgb(100, 210, 130)),
+              PRStatus::MERGED => ("M", Color::Rgb(100, 160, 255)),
+              PRStatus::CLOSED => ("C", Color::Rgb(180, 60, 60)),
+            };
+            (
+              Cell::from(letter).style(Style::default().fg(color).bold()),
+              defined_pr.title.clone(),
+              Style::default().fg(color).add_modifier(Modifier::ITALIC),
+            )
+          }
+        },
+        Err(error) => match error {
+          GSWRError::PR_NOT_FOUND => (
+            Cell::from(""),
+            "No PR".to_string(),
+            Style::default().fg(MUTED),
+          ),
+          GSWRError::Custom(msg) => (Cell::from(""), msg.clone(), Style::default().fg(Color::Red)),
+        },
       };
 
       if branch.is_current {
         Row::new(vec![
-          Cell::from(truncate(&format!(" ● {}", branch.name), col1_max)).style(Style::default().fg(CURRENT).bold()),
+          Cell::from(truncate(&format!(" ● {}", branch.name), col1_max))
+            .style(Style::default().fg(CURRENT).bold()),
           Cell::from(truncate(&commit_date, col2_max)).style(Style::default().fg(MUTED)),
-          Cell::from(truncate(&pr_text, col3_max)).style(pr_style),
+          status_cell,
+          Cell::from(truncate(&pr_text, col4_max)).style(pr_style),
         ])
       } else {
         Row::new(vec![
-          Cell::from(truncate(&format!("   {}", branch.name), col1_max)).style(Style::default().fg(TEXT)),
+          Cell::from(truncate(&format!("   {}", branch.name), col1_max))
+            .style(Style::default().fg(TEXT)),
           Cell::from(truncate(&commit_date, col2_max)).style(Style::default().fg(MUTED)),
-          Cell::from(truncate(&pr_text, col3_max)).style(pr_style),
+          status_cell,
+          Cell::from(truncate(&pr_text, col4_max)).style(pr_style),
         ])
       }
     })
@@ -91,7 +118,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     [
       Constraint::Length(col1_max as u16),
       Constraint::Length(col2_max as u16),
-      Constraint::Length(col3_max as u16),
+      Constraint::Length(col3_status as u16),
+      Constraint::Length(col4_max as u16),
     ],
   )
   .block(
