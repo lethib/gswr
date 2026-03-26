@@ -11,7 +11,7 @@ pub enum GSWRActions {
   None,
 }
 
-pub struct ChannelReceiver {
+pub struct BranchPRUpdate {
   pub branch_name: Option<String>,
   pub pr_result: PRResult,
 }
@@ -19,12 +19,12 @@ pub struct ChannelReceiver {
 pub struct App {
   pub local_branches: Vec<BranchInfo>,
   pub selected: u8,
-  pub pr_rx: Option<Receiver<ChannelReceiver>>,
+  pub pr_rx: Option<Receiver<BranchPRUpdate>>,
   pub throbber_state: throbber_widgets_tui::ThrobberState,
 }
 
 impl App {
-  pub fn new(branches: Vec<BranchInfo>, pr_rx: Option<Receiver<ChannelReceiver>>) -> Self {
+  pub fn new(branches: Vec<BranchInfo>, pr_rx: Option<Receiver<BranchPRUpdate>>) -> Self {
     App {
       local_branches: branches,
       selected: 0,

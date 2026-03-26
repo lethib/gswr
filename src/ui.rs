@@ -38,7 +38,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
   // 2 border chars + 3 column spacing chars (1 gap between each of the 4 columns)
   let inner_width = (frame.area().width as usize).saturating_sub(5);
   let col1_max = inner_width * 20 / 100;
-  let col2_max: usize = 12; // "2026-03-25" + padding
+  let col2_max: usize = 12; // "YYYY-MM-DD" + padding
   let col3_status: usize = 3;
   let col4_max = inner_width
     .saturating_sub(col1_max)

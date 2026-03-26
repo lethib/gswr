@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::{
   GSWRError,
-  app::ChannelReceiver,
+  app::BranchPRUpdate,
   git::{PR, PRStatus},
 };
 
@@ -30,7 +30,7 @@ struct PRHead {
   ref_name: String,
 }
 
-pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<ChannelReceiver>) {
+pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<BranchPRUpdate>) {
   let url = format!(
     "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
     owner, repo
@@ -39,9 +39,9 @@ pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<ChannelReceiver>
   let token = match std::env::var("GITHUB_TOKEN") {
     Ok(t) => t,
     Err(e) => {
-      let _ = tx.send(ChannelReceiver {
+      let _ = tx.send(BranchPRUpdate {
         branch_name: None,
-        pr_result: Err(GSWRError::Custom(format!("GITHUB_TOKEN {}", e.to_string()))),
+        pr_result: Err(GSWRError::Custom(format!("GITHUB_TOKEN {}", e))),
       });
       return;
     }
@@ -56,7 +56,7 @@ pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<ChannelReceiver>
   {
     Ok(r) => r,
     Err(e) => {
-      let _ = tx.send(ChannelReceiver {
+      let _ = tx.send(BranchPRUpdate {
         branch_name: None,
         pr_result: Err(GSWRError::Custom(e.to_string())),
       });
@@ -67,7 +67,7 @@ pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<ChannelReceiver>
   let repo_prs: Vec<PullRequest> = match response.into_json() {
     Ok(prs) => prs,
     Err(e) => {
-      let _ = tx.send(ChannelReceiver {
+      let _ = tx.send(BranchPRUpdate {
         branch_name: None,
         pr_result: Err(GSWRError::from(e)),
       });
@@ -77,7 +77,7 @@ pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<ChannelReceiver>
 
   for pr in repo_prs {
     if tx
-      .send(ChannelReceiver {
+      .send(BranchPRUpdate {
         branch_name: Some(pr.head.ref_name),
         pr_result: Ok(Some(PR {
           title: pr.title,
