@@ -14,7 +14,7 @@ A fast, minimal terminal UI for switching Git branches — with GitHub PR titles
 ## Installation
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/lethib/gswr/releases/download/v1.0.1/gswr-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/lethib/gswr/releases/download/v1.1.0/gswr-installer.sh | sh
 ```
 
 > macOS only (Apple Silicon & Intel). Linux and Windows support coming soon.
