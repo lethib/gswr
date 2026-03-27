@@ -17,6 +17,10 @@ const SELECTED_BG: Color = Color::Rgb(35, 45, 65);
 const TEXT: Color = Color::Rgb(190, 200, 220);
 const BORDER: Color = Color::Rgb(55, 65, 85);
 
+const MERGED_PR: Color = Color::Rgb(100, 160, 255);
+const OPENED_PR: Color = Color::Rgb(100, 210, 130);
+const CLOSED_PR: Color = Color::Rgb(180, 60, 60);
+
 fn truncate(s: &str, max_chars: usize) -> String {
   if max_chars == 0 {
     return String::new();
@@ -69,9 +73,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
           ),
           Some(defined_pr) => {
             let (letter, color) = match defined_pr.status {
-              PRStatus::OPENED => ("O", Color::Rgb(100, 210, 130)),
-              PRStatus::MERGED => ("M", Color::Rgb(100, 160, 255)),
-              PRStatus::CLOSED => ("C", Color::Rgb(180, 60, 60)),
+              PRStatus::OPENED => ("O", OPENED_PR),
+              PRStatus::MERGED => ("M", MERGED_PR),
+              PRStatus::CLOSED => ("C", CLOSED_PR),
             };
             (
               Cell::from(letter).style(Style::default().fg(color).bold()),
@@ -147,23 +151,45 @@ pub fn draw(frame: &mut Frame, app: &App) {
     .and_then(|b| b.last_commit_msg.as_deref())
     .unwrap_or("");
 
-  let mut footer_spans = vec![
-    Span::raw(" "),
-    Span::styled("↑↓ jk", Style::default().fg(ACCENT)),
-    Span::styled(" navigate  ", Style::default().fg(MUTED)),
-    Span::styled("↵", Style::default().fg(ACCENT)),
-    Span::styled(" switch  ", Style::default().fg(MUTED)),
-    Span::styled("q", Style::default().fg(ACCENT)),
-    Span::styled(" quit", Style::default().fg(MUTED)),
-  ];
+  let footer_spans = if app.confirming_sync {
+    vec![
+      Span::raw(" "),
+      Span::styled(
+        "⚠️ All local branches linked to a merged (",
+        Style::default().fg(MUTED),
+      ),
+      Span::styled("M", Style::default().fg(MERGED_PR).bold()),
+      Span::styled(") or closed (", Style::default().fg(MUTED)),
+      Span::styled("C", Style::default().fg(CLOSED_PR).bold()),
+      Span::styled(") PR will be deleted. Press ", Style::default().fg(MUTED)),
+      Span::styled("↵", Style::default().fg(ACCENT)),
+      Span::styled(" to confirm. Press ", Style::default().fg(MUTED)),
+      Span::styled("c", Style::default().fg(ACCENT)),
+      Span::styled(" to cancel.", Style::default().fg(MUTED)),
+    ]
+  } else {
+    let mut spans = vec![
+      Span::raw(" "),
+      Span::styled("↑↓ jk", Style::default().fg(ACCENT)),
+      Span::styled(" navigate  ", Style::default().fg(MUTED)),
+      Span::styled("↵", Style::default().fg(ACCENT)),
+      Span::styled(" switch  ", Style::default().fg(MUTED)),
+      Span::styled("q", Style::default().fg(ACCENT)),
+      Span::styled(" quit  ", Style::default().fg(MUTED)),
+      Span::styled("^s", Style::default().fg(ACCENT)),
+      Span::styled(" sync", Style::default().fg(MUTED)),
+    ];
 
-  if !hint.is_empty() {
-    footer_spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
-    footer_spans.push(Span::styled(
-      hint,
-      Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
-    ));
-  }
+    if !hint.is_empty() {
+      spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
+      spans.push(Span::styled(
+        hint,
+        Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+      ));
+    }
+
+    spans
+  };
 
   let footer = Paragraph::new(Line::from(footer_spans));
 

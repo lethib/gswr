@@ -1,8 +1,10 @@
 use std::sync::mpsc::{Receiver, TryRecvError};
 
+use git2::Repository;
+
 use crate::{
   GSWRError,
-  git::{BranchInfo, PRResult},
+  git::{BranchInfo, GSWRGitActions, PRResult, PRStatus},
 };
 
 pub enum GSWRActions {
@@ -21,6 +23,7 @@ pub struct App {
   pub selected: u8,
   pub pr_rx: Option<Receiver<BranchPRUpdate>>,
   pub throbber_state: throbber_widgets_tui::ThrobberState,
+  pub confirming_sync: bool,
 }
 
 impl App {
@@ -30,6 +33,7 @@ impl App {
       selected: 0,
       pr_rx,
       throbber_state: throbber_widgets_tui::ThrobberState::default(),
+      confirming_sync: false,
     }
   }
 
@@ -50,6 +54,27 @@ impl App {
       Some(branch) if branch.is_current => GSWRActions::Quit,
       Some(branch) => GSWRActions::Checkout(branch.name.clone()),
       None => GSWRActions::Quit,
+    }
+  }
+
+  pub fn sync(&mut self, repo: &Repository) {
+    let branches_to_delete = self
+      .local_branches
+      .iter()
+      .filter(|branch| !branch.is_current)
+      .filter(|branch| match &branch.pr {
+        Ok(pr) => pr.as_ref().is_some_and(|defined_pr| {
+          defined_pr.status == PRStatus::CLOSED || defined_pr.status == PRStatus::MERGED
+        }),
+        Err(_) => false,
+      })
+      .map(|b| b.name.clone())
+      .collect::<Vec<String>>();
+
+    for branch_to_delete in branches_to_delete {
+      if repo.delete_branch(&branch_to_delete).is_ok() {
+        self.local_branches.retain(|b| b.name != branch_to_delete);
+      }
     }
   }
 
