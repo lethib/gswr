@@ -63,24 +63,37 @@ fn run_loop(
 
     if event::poll(Duration::from_millis(50))? {
       if let Event::Key(pressed_key) = event::read()? {
-        match (pressed_key.code, pressed_key.modifiers) {
-          (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,
-
-          (KeyCode::Up, _) | (KeyCode::Char('k'), _) => app.prev(),
-          (KeyCode::Down, _) | (KeyCode::Char('j'), _) => app.next(),
-
-          (KeyCode::Enter, _) => match app.confirm() {
-            GSWRActions::Checkout(branch_name) => {
-              repo.checkout(&branch_name)?;
-              break;
+        if app.confirming_sync {
+          match pressed_key.code {
+            KeyCode::Enter => {
+              app.sync(repo);
+              app.confirming_sync = false;
             }
-            GSWRActions::Quit => break,
-            GSWRActions::None => {}
-          },
+            KeyCode::Char('c') => {
+              app.confirming_sync = false;
+            }
+            _ => {}
+          }
+        } else {
+          match (pressed_key.code, pressed_key.modifiers) {
+            (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,
 
-          (KeyCode::Char('s'), KeyModifiers::CONTROL) => app.sync(repo),
+            (KeyCode::Up, _) | (KeyCode::Char('k'), _) => app.prev(),
+            (KeyCode::Down, _) | (KeyCode::Char('j'), _) => app.next(),
 
-          _ => {}
+            (KeyCode::Enter, _) => match app.confirm() {
+              GSWRActions::Checkout(branch_name) => {
+                repo.checkout(&branch_name)?;
+                break;
+              }
+              GSWRActions::Quit => break,
+              GSWRActions::None => {}
+            },
+
+            (KeyCode::Char('s'), KeyModifiers::CONTROL) => app.confirming_sync = true,
+
+            _ => {}
+          }
         }
       }
     }

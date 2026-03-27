@@ -23,6 +23,7 @@ pub struct App {
   pub selected: u8,
   pub pr_rx: Option<Receiver<BranchPRUpdate>>,
   pub throbber_state: throbber_widgets_tui::ThrobberState,
+  pub confirming_sync: bool,
 }
 
 impl App {
@@ -32,6 +33,7 @@ impl App {
       selected: 0,
       pr_rx,
       throbber_state: throbber_widgets_tui::ThrobberState::default(),
+      confirming_sync: false,
     }
   }
 
