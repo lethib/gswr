@@ -64,12 +64,13 @@ fn run_loop(
     if event::poll(Duration::from_millis(50))? {
       if let Event::Key(pressed_key) = event::read()? {
         if app.confirming_sync {
-          match pressed_key.code {
-            KeyCode::Enter => {
+          match (pressed_key.code, pressed_key.modifiers) {
+            (KeyCode::Enter, _) => {
               app.sync(repo);
               app.confirming_sync = false;
             }
-            KeyCode::Char('c') => {
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,
+            (KeyCode::Char('c'), _) => {
               app.confirming_sync = false;
             }
             _ => {}
