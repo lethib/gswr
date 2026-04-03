@@ -63,6 +63,10 @@ fn run_loop(
 
     if event::poll(Duration::from_millis(50))? {
       if let Event::Key(pressed_key) = event::read()? {
+        if app.error_message.is_some() {
+          app.error_message = None
+        }
+
         if app.confirming_sync {
           match (pressed_key.code, pressed_key.modifiers) {
             (KeyCode::Enter, _) => {

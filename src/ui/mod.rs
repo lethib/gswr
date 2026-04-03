@@ -8,18 +8,20 @@ use ratatui::{
 
 use throbber_widgets_tui::BOX_DRAWING;
 
-use crate::{GSWRError, app::App, git::PRStatus};
+use crate::{GSWRError, app::App, git::PRStatus, ui::footers::Footer};
 
-const ACCENT: Color = Color::Rgb(130, 170, 255);
+pub mod footers;
+
+pub(super) const ACCENT: Color = Color::Rgb(130, 170, 255);
 const CURRENT: Color = Color::Rgb(100, 210, 130);
-const MUTED: Color = Color::Rgb(90, 100, 120);
+pub(super) const MUTED: Color = Color::Rgb(90, 100, 120);
 const SELECTED_BG: Color = Color::Rgb(35, 45, 65);
 const TEXT: Color = Color::Rgb(190, 200, 220);
 const BORDER: Color = Color::Rgb(55, 65, 85);
 
-const MERGED_PR: Color = Color::Rgb(100, 160, 255);
+pub(super) const MERGED_PR: Color = Color::Rgb(100, 160, 255);
 const OPENED_PR: Color = Color::Rgb(100, 210, 130);
-const CLOSED_PR: Color = Color::Rgb(180, 60, 60);
+pub(super) const CLOSED_PR: Color = Color::Rgb(180, 60, 60);
 
 fn truncate(s: &str, max_chars: usize) -> String {
   if max_chars == 0 {
@@ -151,46 +153,28 @@ pub fn draw(frame: &mut Frame, app: &App) {
     .and_then(|b| b.last_commit_msg.as_deref())
     .unwrap_or("");
 
-  let footer_spans = if app.confirming_sync {
-    vec![
+  let footer_spans = match &app.error_message {
+    Some(message) => vec![
       Span::raw(" "),
-      Span::styled(
-        "⚠️ All local branches linked to a merged (",
-        Style::default().fg(MUTED),
-      ),
-      Span::styled("M", Style::default().fg(MERGED_PR).bold()),
-      Span::styled(") or closed (", Style::default().fg(MUTED)),
-      Span::styled("C", Style::default().fg(CLOSED_PR).bold()),
-      Span::styled(") PR will be deleted. Press ", Style::default().fg(MUTED)),
-      Span::styled("↵", Style::default().fg(ACCENT)),
-      Span::styled(" to confirm. Press ", Style::default().fg(MUTED)),
-      Span::styled("c", Style::default().fg(ACCENT)),
-      Span::styled(" to cancel.", Style::default().fg(MUTED)),
-    ]
-  } else {
-    let mut spans = vec![
-      Span::raw(" "),
-      Span::styled("↑↓ jk", Style::default().fg(ACCENT)),
-      Span::styled(" navigate  ", Style::default().fg(MUTED)),
-      Span::styled("↵", Style::default().fg(ACCENT)),
-      Span::styled(" switch  ", Style::default().fg(MUTED)),
-      Span::styled("q", Style::default().fg(ACCENT)),
-      Span::styled(" quit  ", Style::default().fg(MUTED)),
-      Span::styled("^s", Style::default().fg(ACCENT)),
-      Span::styled(" sync  ", Style::default().fg(MUTED)),
-      Span::styled("⇧D", Style::default().fg(ACCENT)),
-      Span::styled(" delete", Style::default().fg(MUTED)),
-    ];
+      Span::styled(message, Style::default().fg(Color::Red)),
+    ],
+    None => {
+      if app.confirming_sync {
+        Footer::sync()
+      } else {
+        let mut spans = Footer::helper();
 
-    if !hint.is_empty() {
-      spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
-      spans.push(Span::styled(
-        hint,
-        Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
-      ));
+        if !hint.is_empty() {
+          spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
+          spans.push(Span::styled(
+            hint,
+            Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+          ));
+        }
+
+        spans
+      }
     }
-
-    spans
   };
 
   let footer = Paragraph::new(Line::from(footer_spans));
