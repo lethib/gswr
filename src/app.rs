@@ -78,6 +78,22 @@ impl App {
     }
   }
 
+  pub fn delete_selected_branch(&mut self, repo: &Repository) {
+    let branch_name_to_delete = self
+      .local_branches
+      .get(self.selected as usize)
+      .map(|b| b.name.clone());
+
+    match branch_name_to_delete {
+      Some(name) => {
+        if repo.delete_branch(&name).is_ok() {
+          self.local_branches.retain(|b| b.name != name);
+        }
+      }
+      None => return,
+    }
+  }
+
   pub fn drain_pr_updates(&mut self) {
     let Some(rx) = &self.pr_rx else { return };
 

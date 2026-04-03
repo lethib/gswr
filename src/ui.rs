@@ -177,7 +177,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
       Span::styled("q", Style::default().fg(ACCENT)),
       Span::styled(" quit  ", Style::default().fg(MUTED)),
       Span::styled("^s", Style::default().fg(ACCENT)),
-      Span::styled(" sync", Style::default().fg(MUTED)),
+      Span::styled(" sync  ", Style::default().fg(MUTED)),
+      Span::styled("⇧D", Style::default().fg(ACCENT)),
+      Span::styled(" delete", Style::default().fg(MUTED)),
     ];
 
     if !hint.is_empty() {
