@@ -24,6 +24,7 @@ pub struct App {
   pub pr_rx: Option<Receiver<BranchPRUpdate>>,
   pub throbber_state: throbber_widgets_tui::ThrobberState,
   pub confirming_sync: bool,
+  pub error_message: Option<String>,
 }
 
 impl App {
@@ -34,6 +35,7 @@ impl App {
       pr_rx,
       throbber_state: throbber_widgets_tui::ThrobberState::default(),
       confirming_sync: false,
+      error_message: None,
     }
   }
 
@@ -72,8 +74,12 @@ impl App {
       .collect::<Vec<String>>();
 
     for branch_to_delete in branches_to_delete {
-      if repo.delete_branch(&branch_to_delete).is_ok() {
-        self.local_branches.retain(|b| b.name != branch_to_delete);
+      match repo.delete_branch(&branch_to_delete) {
+        Ok(()) => self.local_branches.retain(|b| b.name != branch_to_delete),
+        Err(error) => {
+          self.error_message = Some(error.to_string());
+          break;
+        }
       }
     }
   }
@@ -85,11 +91,10 @@ impl App {
       .map(|b| b.name.clone());
 
     match branch_name_to_delete {
-      Some(name) => {
-        if repo.delete_branch(&name).is_ok() {
-          self.local_branches.retain(|b| b.name != name);
-        }
-      }
+      Some(name) => match repo.delete_branch(&name) {
+        Ok(()) => self.local_branches.retain(|b| b.name != name),
+        Err(error) => self.error_message = Some(error.to_string()),
+      },
       None => return,
     }
   }
