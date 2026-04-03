@@ -85,17 +85,30 @@ impl App {
   }
 
   pub fn delete_selected_branch(&mut self, repo: &Repository) {
-    let branch_name_to_delete = self
-      .local_branches
-      .get(self.selected as usize)
-      .map(|b| b.name.clone());
+    let Some(branch_to_delete) = self.local_branches.get(self.selected as usize) else {
+      self.error_message = Some("local branch not found".to_string());
+      return;
+    };
 
-    match branch_name_to_delete {
-      Some(name) => match repo.delete_branch(&name) {
-        Ok(()) => self.local_branches.retain(|b| b.name != name),
-        Err(error) => self.error_message = Some(error.to_string()),
-      },
-      None => return,
+    match &branch_to_delete.pr {
+      Ok(pr) => {
+        if pr.as_ref().is_some_and(|pr| pr.status == PRStatus::OPENED) {
+          self.error_message = Some("cannot delete branch linked to an opened PR".to_string());
+          return;
+        }
+      }
+      Err(GSWRError::PR_NOT_FOUND) => {
+        self.error_message = Some("cannot delete branch not linked to a PR".to_string());
+        return;
+      }
+      Err(_) => return,
+    }
+
+    let branch_name = branch_to_delete.name.clone();
+
+    match repo.delete_branch(&branch_name) {
+      Ok(()) => self.local_branches.retain(|b| b.name != branch_name),
+      Err(error) => self.error_message = Some(error.to_string()),
     }
   }
 
