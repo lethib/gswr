@@ -91,6 +91,8 @@ fn run_loop(
               GSWRActions::None => {}
             },
 
+            (KeyCode::Char('D'), _) => app.delete_selected_branch(repo),
+
             (KeyCode::Char('s'), KeyModifiers::CONTROL) => app.confirming_sync = true,
 
             _ => {}
