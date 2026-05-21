@@ -89,11 +89,21 @@ pub fn draw(frame: &mut Frame, app: &App) {
           }
         },
         Err(error) => match error {
-          GSWRError::PR_NOT_FOUND => (
-            Cell::from(""),
-            "No PR".to_string(),
-            Style::default().fg(MUTED),
-          ),
+          GSWRError::PR_NOT_FOUND => {
+            if branch.is_main {
+              (
+                Cell::from(""),
+                "main branch".to_string(),
+                Style::default().fg(Color::LightRed).italic(),
+              )
+            } else {
+              (
+                Cell::from(""),
+                "No PR".to_string(),
+                Style::default().fg(MUTED),
+              )
+            }
+          }
           GSWRError::Custom(msg) => (Cell::from(""), msg.clone(), Style::default().fg(Color::Red)),
         },
       };
@@ -159,10 +169,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
   frame.render_stateful_widget(table, chunks[0], &mut table_state);
 
-  let selected_branch = app
+  let last_commit_msg = app
     .local_branches
     .get(app.selected as usize)
-    .expect("should_not_happen");
+    .expect("should_not_happen")
+    .last_commit_msg
+    .clone();
 
   let footer_lines: Vec<Line> = match &app.error_message {
     Some(message) => vec![Line::from(vec![
@@ -175,20 +187,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
       } else {
         let mut spans = Footer::helper();
 
-        if selected_branch.is_main {
-          spans.push(Span::styled(
-            "   (main branch)",
-            Style::default().fg(Color::Red).italic(),
-          ));
-        } else {
-          if let Some(msg) = selected_branch.last_commit_msg.clone() {
-            if !msg.is_empty() {
-              spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
-              spans.push(Span::styled(
-                msg,
-                Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
-              ));
-            }
+        if let Some(msg) = last_commit_msg {
+          if !msg.is_empty() {
+            spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
+            spans.push(Span::styled(
+              msg,
+              Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+            ));
           }
         }
 
