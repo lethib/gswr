@@ -92,6 +92,11 @@ impl App {
       return;
     };
 
+    if branch_to_delete.is_main {
+      self.error_message = Some("cannot delete main branch".to_string());
+      return;
+    }
+
     match &branch_to_delete.pr {
       Ok(pr) => {
         if pr.as_ref().is_some_and(|pr| pr.status == PRStatus::OPENED) {
