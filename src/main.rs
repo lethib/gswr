@@ -69,8 +69,12 @@ fn run_loop(
 
         if app.confirming_sync {
           match (pressed_key.code, pressed_key.modifiers) {
+            (KeyCode::Enter, KeyModifiers::ALT) => {
+              app.sync(repo, false);
+              app.confirming_sync = false;
+            }
             (KeyCode::Enter, _) => {
-              app.sync(repo);
+              app.sync(repo, true);
               app.confirming_sync = false;
             }
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,

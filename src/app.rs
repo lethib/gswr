@@ -59,15 +59,17 @@ impl App {
     }
   }
 
-  pub fn sync(&mut self, repo: &Repository) {
+  pub fn sync(&mut self, repo: &Repository, safe_delete: bool) {
     let branches_to_delete = self
       .local_branches
       .iter()
       .filter(|branch| !branch.is_current)
+      .filter(|branch| !branch.is_main)
       .filter(|branch| match &branch.pr {
         Ok(pr) => pr.as_ref().is_some_and(|defined_pr| {
           defined_pr.status == PRStatus::CLOSED || defined_pr.status == PRStatus::MERGED
         }),
+        Err(GSWRError::PR_NOT_FOUND) => !safe_delete,
         Err(_) => false,
       })
       .map(|b| b.name.clone())
