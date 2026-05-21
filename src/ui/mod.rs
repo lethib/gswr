@@ -164,11 +164,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
     .get(app.selected as usize)
     .expect("should_not_happen");
 
-  let footer_spans = match &app.error_message {
-    Some(message) => vec![
+  let footer_lines: Vec<Line> = match &app.error_message {
+    Some(message) => vec![Line::from(vec![
       Span::raw(" "),
       Span::styled(message, Style::default().fg(Color::Red)),
-    ],
+    ])],
     None => {
       if app.confirming_sync {
         Footer::sync()
@@ -192,12 +192,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
           }
         }
 
-        spans
+        vec![Line::from(spans)]
       }
     }
   };
 
-  let footer = Paragraph::new(Line::from(footer_spans));
+  let footer = Paragraph::new(footer_lines);
 
   frame.render_widget(footer, chunks[1]);
 }
