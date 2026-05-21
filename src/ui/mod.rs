@@ -43,13 +43,15 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
   // 2 border chars + 3 column spacing chars (1 gap between each of the 4 columns)
   let inner_width = (frame.area().width as usize).saturating_sub(5);
-  let col1_max = inner_width * 20 / 100;
-  let col2_max: usize = 12; // "YYYY-MM-DD" + padding
-  let col3_status: usize = 3;
-  let col4_max = inner_width
+  let col1_max: usize = 2;
+  let col2_max = inner_width * 20 / 100;
+  let col3_max: usize = 12; // "YYYY-MM-DD" + padding
+  let col4_status: usize = 3;
+  let col5_max = inner_width
     .saturating_sub(col1_max)
     .saturating_sub(col2_max)
-    .saturating_sub(col3_status);
+    .saturating_sub(col3_max)
+    .saturating_sub(col4_status);
 
   let rows = app
     .local_branches
@@ -96,23 +98,32 @@ pub fn draw(frame: &mut Frame, app: &App) {
         },
       };
 
-      if branch.is_current {
-        Row::new(vec![
-          Cell::from(truncate(&format!(" ● {}", branch.name), col1_max))
-            .style(Style::default().fg(CURRENT).bold()),
-          Cell::from(truncate(&commit_date, col2_max)).style(Style::default().fg(MUTED)),
-          status_cell,
-          Cell::from(truncate(&pr_text, col4_max)).style(pr_style),
-        ])
+      let mut row_cells = vec![];
+
+      if branch.is_main {
+        row_cells.push(Cell::from(" ◆").style(Style::default().fg(Color::Red)));
       } else {
-        Row::new(vec![
-          Cell::from(truncate(&format!("   {}", branch.name), col1_max))
-            .style(Style::default().fg(TEXT)),
-          Cell::from(truncate(&commit_date, col2_max)).style(Style::default().fg(MUTED)),
-          status_cell,
-          Cell::from(truncate(&pr_text, col4_max)).style(pr_style),
-        ])
+        row_cells.push(Cell::from("  "));
       }
+
+      if branch.is_current {
+        row_cells.push(
+          Cell::from(truncate(&format!(" {}", branch.name), col2_max))
+            .style(Style::default().fg(CURRENT).bold()),
+        );
+      } else {
+        row_cells.push(
+          Cell::from(truncate(&format!(" {}", branch.name), col2_max))
+            .style(Style::default().fg(TEXT)),
+        );
+      }
+
+      row_cells
+        .push(Cell::from(truncate(&commit_date, col3_max)).style(Style::default().fg(MUTED)));
+      row_cells.push(status_cell);
+      row_cells.push(Cell::from(truncate(&pr_text, col5_max)).style(pr_style));
+
+      Row::new(row_cells)
     })
     .collect::<Vec<Row>>();
 
@@ -124,8 +135,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
     [
       Constraint::Length(col1_max as u16),
       Constraint::Length(col2_max as u16),
-      Constraint::Length(col3_status as u16),
-      Constraint::Length(col4_max as u16),
+      Constraint::Length(col3_max as u16),
+      Constraint::Length(col4_status as u16),
+      Constraint::Length(col5_max as u16),
     ],
   )
   .block(
@@ -147,11 +159,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
   frame.render_stateful_widget(table, chunks[0], &mut table_state);
 
-  let hint = app
+  let selected_branch = app
     .local_branches
     .get(app.selected as usize)
-    .and_then(|b| b.last_commit_msg.as_deref())
-    .unwrap_or("");
+    .expect("should_not_happen");
 
   let footer_spans = match &app.error_message {
     Some(message) => vec![
@@ -164,12 +175,21 @@ pub fn draw(frame: &mut Frame, app: &App) {
       } else {
         let mut spans = Footer::helper();
 
-        if !hint.is_empty() {
-          spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
+        if selected_branch.is_main {
           spans.push(Span::styled(
-            hint,
-            Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+            "   (main branch)",
+            Style::default().fg(Color::Red).italic(),
           ));
+        } else {
+          if let Some(msg) = selected_branch.last_commit_msg.clone() {
+            if !msg.is_empty() {
+              spans.push(Span::styled("   Last commit: ", Style::default().fg(MUTED)));
+              spans.push(Span::styled(
+                msg,
+                Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+              ));
+            }
+          }
         }
 
         spans

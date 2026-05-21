@@ -21,6 +21,7 @@ pub type PRResult = Result<Option<PR>, GSWRError>;
 pub struct BranchInfo {
   pub name: String,
   pub is_current: bool,
+  pub is_main: bool,
   pub last_commit_date: Option<DateTime<Local>>,
   pub last_commit_msg: Option<String>,
   pub pr: PRResult,
@@ -31,10 +32,15 @@ pub trait GSWRGitActions {
   fn checkout(&self, branch_name: &str) -> Result<(), git2::Error>;
   fn extract_owner_repo(&self) -> Result<(String, String), git2::Error>;
   fn delete_branch(&self, branch_name: &str) -> Result<(), git2::Error>;
+  fn detect_main_branch(&self) -> Result<String, git2::Error>;
 }
+
+const MAIN_DEFAULT_BRANCH_NAMES: [&'static str; 4] = ["main", "master", "develop", "trunk"];
 
 impl GSWRGitActions for Repository {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error> {
+    let main_branch_name = self.detect_main_branch()?;
+
     let mut local_branches = self
       .branches(Some(BranchType::Local))?
       .enumerate()
@@ -54,9 +60,12 @@ impl GSWRGitActions for Repository {
           .summary()
           .map(|s| s.to_string());
 
+        let is_main_branch = branch_name == main_branch_name;
+
         Ok(BranchInfo {
           name: branch_name,
           is_current: branch.is_head(),
+          is_main: is_main_branch,
           last_commit_date,
           last_commit_msg,
           pr: Ok(None),
@@ -128,5 +137,23 @@ impl GSWRGitActions for Repository {
     branch_to_delete.delete()?;
 
     Ok(())
+  }
+
+  fn detect_main_branch(&self) -> Result<String, git2::Error> {
+    if let Ok(reference) = self.find_reference("refs/remotes/origin/HEAD") {
+      if let Some(target_reference) = reference.symbolic_target() {
+        if let Some(branch_name) = target_reference.split("/").last() {
+          return Ok(branch_name.to_string());
+        }
+      }
+    }
+
+    for branch_name in MAIN_DEFAULT_BRANCH_NAMES {
+      if self.find_branch(branch_name, BranchType::Local).is_ok() {
+        return Ok(branch_name.to_string());
+      }
+    }
+
+    Err(git2::Error::from_str("cannot determine main branch"))
   }
 }
