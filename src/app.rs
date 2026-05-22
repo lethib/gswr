@@ -4,7 +4,7 @@ use git2::Repository;
 
 use crate::{
   GSWRError,
-  git::{BranchInfo, GSWRGitActions, PRResult, PRStatus},
+  git::branch::{BranchInfo, PRResult, PRStatus},
 };
 
 pub enum GSWRActions {
@@ -72,18 +72,26 @@ impl App {
         Err(GSWRError::PR_NOT_FOUND) => !safe_delete,
         Err(_) => false,
       })
-      .map(|b| b.name.clone())
-      .collect::<Vec<String>>();
+      .map(|b| b.clone())
+      .collect::<Vec<BranchInfo>>();
 
     for branch_to_delete in branches_to_delete {
-      match repo.delete_branch(&branch_to_delete) {
-        Ok(()) => self.local_branches.retain(|b| b.name != branch_to_delete),
+      match branch_to_delete.delete(repo, safe_delete) {
+        Ok(()) => {
+          self
+            .local_branches
+            .retain(|b| b.name != branch_to_delete.name);
+        }
         Err(error) => {
           self.error_message = Some(error.to_string());
           break;
         }
       }
     }
+
+    self.selected = self
+      .selected
+      .min(self.local_branches.len().saturating_sub(1) as u8);
   }
 
   pub fn delete_selected_branch(&mut self, repo: &Repository) {
@@ -92,30 +100,20 @@ impl App {
       return;
     };
 
-    if branch_to_delete.is_main {
-      self.error_message = Some("cannot delete main branch".to_string());
-      return;
-    }
+    let branch_to_delete = branch_to_delete.clone();
 
-    match &branch_to_delete.pr {
-      Ok(pr) => {
-        if pr.as_ref().is_some_and(|pr| pr.status == PRStatus::OPENED) {
-          self.error_message = Some("cannot delete branch linked to an opened PR".to_string());
-          return;
-        }
+    match branch_to_delete.delete(repo, true) {
+      Ok(()) => {
+        self
+          .local_branches
+          .retain(|b| b.name != branch_to_delete.name);
+        self.selected = self
+          .selected
+          .min(self.local_branches.len().saturating_sub(1) as u8);
       }
-      Err(GSWRError::PR_NOT_FOUND) => {
-        self.error_message = Some("cannot delete branch not linked to a PR".to_string());
-        return;
+      Err(error) => {
+        self.error_message = Some(error.to_string());
       }
-      Err(_) => return,
-    }
-
-    let branch_name = branch_to_delete.name.clone();
-
-    match repo.delete_branch(&branch_name) {
-      Ok(()) => self.local_branches.retain(|b| b.name != branch_name),
-      Err(error) => self.error_message = Some(error.to_string()),
     }
   }
 
