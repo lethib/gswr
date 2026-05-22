@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::{
   GSWRError,
   app::BranchPRUpdate,
-  git::{PR, PRStatus},
+  git::branch::{PR, PRStatus},
 };
 
 #[derive(Deserialize)]

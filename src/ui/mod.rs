@@ -8,7 +8,7 @@ use ratatui::{
 
 use throbber_widgets_tui::BOX_DRAWING;
 
-use crate::{GSWRError, app::App, git::PRStatus, ui::footers::Footer};
+use crate::{GSWRError, app::App, git::branch::PRStatus, ui::footers::Footer};
 
 pub mod footers;
 

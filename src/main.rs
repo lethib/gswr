@@ -9,7 +9,7 @@ use ratatui::{Terminal, TerminalOptions, Viewport, prelude::CrosstermBackend};
 
 use crate::{
   app::{App, GSWRActions},
-  git::GSWRGitActions,
+  git::actions::GSWRGitActions,
 };
 
 pub mod app;

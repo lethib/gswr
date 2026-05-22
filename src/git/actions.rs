@@ -1,41 +1,14 @@
-use chrono::{DateTime, Local, TimeZone};
+use chrono::{Local, TimeZone};
 use git2::{BranchType, Repository};
 
-use crate::GSWRError;
-
-#[derive(Clone, PartialEq)]
-pub enum PRStatus {
-  OPENED,
-  MERGED,
-  CLOSED,
-}
-
-#[derive(Clone)]
-pub struct PR {
-  pub title: String,
-  pub status: PRStatus,
-}
-
-pub type PRResult = Result<Option<PR>, GSWRError>;
-
-pub struct BranchInfo {
-  pub name: String,
-  pub is_current: bool,
-  pub is_main: bool,
-  pub last_commit_date: Option<DateTime<Local>>,
-  pub last_commit_msg: Option<String>,
-  pub pr: PRResult,
-}
+use crate::git::branch::{BranchInfo, MAIN_DEFAULT_BRANCH_NAMES};
 
 pub trait GSWRGitActions {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error>;
   fn checkout(&self, branch_name: &str) -> Result<(), git2::Error>;
   fn extract_owner_repo(&self) -> Result<(String, String), git2::Error>;
-  fn delete_branch(&self, branch_name: &str) -> Result<(), git2::Error>;
   fn detect_main_branch(&self) -> Result<String, git2::Error>;
 }
-
-const MAIN_DEFAULT_BRANCH_NAMES: [&'static str; 4] = ["main", "master", "develop", "trunk"];
 
 impl GSWRGitActions for Repository {
   fn list_branches(&self) -> Result<Vec<BranchInfo>, git2::Error> {
@@ -125,18 +98,6 @@ impl GSWRGitActions for Repository {
       .to_string();
 
     Ok((owner, repo_name))
-  }
-
-  fn delete_branch(&self, branch_name: &str) -> Result<(), git2::Error> {
-    let mut branch_to_delete = self.find_branch(branch_name, BranchType::Local)?;
-
-    if branch_to_delete.is_head() {
-      return Err(git2::Error::from_str("cannot delete current branch"));
-    }
-
-    branch_to_delete.delete()?;
-
-    Ok(())
   }
 
   fn detect_main_branch(&self) -> Result<String, git2::Error> {
