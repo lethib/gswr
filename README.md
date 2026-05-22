@@ -15,7 +15,7 @@ A fast, minimal terminal UI for switching Git branches — with GitHub PR status
 ## Installation
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/lethib/gswr/releases/download/v1.2.1/gswr-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/lethib/gswr/releases/download/v2.0.0/gswr-installer.sh | sh
 ```
 
 > macOS only (Apple Silicon & Intel). Linux and Windows support coming soon.
@@ -33,7 +33,7 @@ gswr
 | `↑` / `k` | Move up |
 | `↓` / `j` | Move down |
 | `↵` | Switch to selected branch |
-| `Shift+D` | Delete selected branch |
+| `Shift+D` | Delete selected branch (not allowed on main branch) |
 | `Ctrl+S` | Sync branches (delete merged/closed) |
 | `q` / `Ctrl+C` | Quit |
 
@@ -57,7 +57,23 @@ Without `GITHUB_TOKEN`, PR information is not shown.
 
 ### Branch sync
 
-Press `Ctrl+S` to delete all local branches whose PR has been merged (`M`) or closed (`C`). A confirmation prompt will appear — press `↵` to confirm or `c` to cancel.
+Press `Ctrl+S` to delete all local branches whose PR has been merged (`M`) or closed (`C`). A confirmation prompt will appear:
+
+- Press `↵` to confirm (safe mode: only deletes branches with a merged/closed PR)
+- Press `⌥↵` (Alt+Enter) to also delete local branches with **no linked PR** — unsafe mode, skips branches without a PR status (the main branch is always protected)
+- Press `c` to cancel
+
+The main branch is always protected and cannot be deleted, whether individually or during sync.
+
+## oh-my-zsh users
+
+If you use oh-my-zsh with the `git` plugin, `gsw` is already aliased to `git switch`. You may want to alias `gswr` to a shorter name in your `.zshrc`:
+
+```sh
+alias gsw=gswr
+```
+
+This overrides the oh-my-zsh `gsw` alias with `gswr`. If you still need the original `git switch` shorthand, use `git switch` directly or pick a different alias.
 
 ## Requirements
 
