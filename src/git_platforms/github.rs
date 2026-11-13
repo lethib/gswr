@@ -1,11 +1,13 @@
 use std::sync::mpsc::Sender;
 
+use ratatui::style::Color;
 use serde::Deserialize;
 
 use crate::{
   GSWRError,
   app::BranchPRUpdate,
   git::branch::{PR, PRStatus},
+  git_platforms::GitPlatform,
 };
 
 #[derive(Deserialize)]
@@ -30,67 +32,79 @@ struct PRHead {
   ref_name: String,
 }
 
-pub fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<BranchPRUpdate>) {
-  let url = format!(
-    "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
-    owner, repo
-  );
+pub struct GitHub;
 
-  let token = match std::env::var("GITHUB_TOKEN") {
-    Ok(t) => t,
-    Err(e) => {
-      let _ = tx.send(BranchPRUpdate {
-        branch_name: None,
-        pr_result: Err(GSWRError::Custom(format!("GITHUB_TOKEN {}", e))),
-      });
-      return;
+impl GitPlatform for GitHub {
+  fn pr_status_color(pr_status: &PRStatus) -> Color {
+    match pr_status {
+      PRStatus::OPENED => Color::Rgb(67, 132, 64),
+      PRStatus::MERGED => Color::Rgb(130, 89, 221),
+      PRStatus::CLOSED => Color::Rgb(201, 69, 60),
     }
-  };
+  }
 
-  let response = match ureq::get(&url)
-    .set("Authorization", &format!("Bearer {}", token))
-    .set("User-Agent", "gswr")
-    .set("Accept", "application/vnd.github+json")
-    .set("X-GitHub-Api-Version", "2026-03-10")
-    .call()
-  {
-    Ok(r) => r,
-    Err(e) => {
-      let _ = tx.send(BranchPRUpdate {
-        branch_name: None,
-        pr_result: Err(GSWRError::Custom(e.to_string())),
-      });
-      return;
-    }
-  };
+  fn fetch_open_pr_titles(owner: &str, repo: &str, tx: Sender<BranchPRUpdate>) {
+    let url = format!(
+      "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
+      owner, repo
+    );
 
-  let repo_prs: Vec<PullRequest> = match response.into_json() {
-    Ok(prs) => prs,
-    Err(e) => {
-      let _ = tx.send(BranchPRUpdate {
-        branch_name: None,
-        pr_result: Err(GSWRError::from(e)),
-      });
-      return;
-    }
-  };
+    let token = match std::env::var("GITHUB_TOKEN") {
+      Ok(t) => t,
+      Err(e) => {
+        let _ = tx.send(BranchPRUpdate {
+          branch_name: None,
+          pr_result: Err(GSWRError::Custom(format!("GITHUB_TOKEN {}", e))),
+        });
+        return;
+      }
+    };
 
-  for pr in repo_prs {
-    if tx
-      .send(BranchPRUpdate {
-        branch_name: Some(pr.head.ref_name),
-        pr_result: Ok(Some(PR {
-          title: pr.title,
-          status: match pr.state {
-            PRState::OPEN => PRStatus::OPENED,
-            PRState::CLOSED if pr.merged_at.is_some() => PRStatus::MERGED,
-            PRState::CLOSED => PRStatus::CLOSED,
-          },
-        })),
-      })
-      .is_err()
+    let response = match ureq::get(&url)
+      .set("Authorization", &format!("Bearer {}", token))
+      .set("User-Agent", "gswr")
+      .set("Accept", "application/vnd.github+json")
+      .set("X-GitHub-Api-Version", "2026-03-10")
+      .call()
     {
-      break;
+      Ok(r) => r,
+      Err(e) => {
+        let _ = tx.send(BranchPRUpdate {
+          branch_name: None,
+          pr_result: Err(GSWRError::Custom(e.to_string())),
+        });
+        return;
+      }
+    };
+
+    let repo_prs: Vec<PullRequest> = match response.into_json() {
+      Ok(prs) => prs,
+      Err(e) => {
+        let _ = tx.send(BranchPRUpdate {
+          branch_name: None,
+          pr_result: Err(GSWRError::from(e)),
+        });
+        return;
+      }
+    };
+
+    for pr in repo_prs {
+      if tx
+        .send(BranchPRUpdate {
+          branch_name: Some(pr.head.ref_name),
+          pr_result: Ok(Some(PR {
+            title: pr.title,
+            status: match pr.state {
+              PRState::OPEN => PRStatus::OPENED,
+              PRState::CLOSED if pr.merged_at.is_some() => PRStatus::MERGED,
+              PRState::CLOSED => PRStatus::CLOSED,
+            },
+          })),
+        })
+        .is_err()
+      {
+        break;
+      }
     }
   }
 }
