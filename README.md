@@ -2,7 +2,7 @@
 
 A fast, minimal terminal UI for switching Git branches — with GitHub PR status and titles shown inline.
 
-<img src="https://i.8upload.com/image/7cf7a65fd36d2be9/gswr-demo.gif">
+<img src="https://i.8upload.com/image/17e1f4a4c9304061/gswr-demo.gif">
 
 ## Features
 
