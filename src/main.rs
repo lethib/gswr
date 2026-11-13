@@ -44,7 +44,9 @@ fn main() -> Result<(), GSWRError> {
 
   run_loop(&mut terminal, &mut app, &current_repo)?;
 
+  let viewport_origin = terminal.get_frame().area().as_position();
   terminal.clear()?;
+  terminal.set_cursor_position(viewport_origin)?;
   disable_raw_mode()?;
 
   Ok(())
