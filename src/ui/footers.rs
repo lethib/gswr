@@ -3,7 +3,11 @@ use ratatui::{
   text::{Line, Span},
 };
 
-use crate::ui::{ACCENT, CLOSED_PR, MERGED_PR, MUTED};
+use crate::{
+  git::branch::PRStatus,
+  git_platforms::{GitPlatform, github::GitHub},
+  ui::{ACCENT, MUTED},
+};
 
 pub(super) struct Footer {}
 
@@ -32,9 +36,19 @@ impl Footer {
           "⚠️ All local branches linked to a merged (",
           Style::default().fg(MUTED),
         ),
-        Span::styled("M", Style::default().fg(MERGED_PR).bold()),
+        Span::styled(
+          "M",
+          Style::default()
+            .fg(GitHub::pr_status_color(&PRStatus::MERGED))
+            .bold(),
+        ),
         Span::styled(") or closed (", Style::default().fg(MUTED)),
-        Span::styled("C", Style::default().fg(CLOSED_PR).bold()),
+        Span::styled(
+          "C",
+          Style::default()
+            .fg(GitHub::pr_status_color(&PRStatus::CLOSED))
+            .bold(),
+        ),
         Span::styled(") PR will be deleted. Press ", Style::default().fg(MUTED)),
         Span::styled("↵", Style::default().fg(ACCENT)),
         Span::styled(" to confirm. Press ", Style::default().fg(MUTED)),

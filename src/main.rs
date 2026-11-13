@@ -10,6 +10,7 @@ use ratatui::{Terminal, TerminalOptions, Viewport, prelude::CrosstermBackend};
 use crate::{
   app::{App, GSWRActions},
   git::actions::GSWRGitActions,
+  git_platforms::{GitPlatform, github::GitHub},
 };
 
 pub mod app;
@@ -24,7 +25,7 @@ fn main() -> Result<(), GSWRError> {
   let pr_rx = match current_repo.extract_owner_repo() {
     Ok((owner, repo)) => {
       let (sender, receiver) = mpsc::channel();
-      thread::spawn(move || git_platforms::github::fetch_open_pr_titles(&owner, &repo, sender));
+      thread::spawn(move || GitHub::fetch_open_pr_titles(&owner, &repo, sender));
       Some(receiver)
     }
     Err(_) => None,

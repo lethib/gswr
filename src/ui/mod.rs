@@ -8,7 +8,10 @@ use ratatui::{
 
 use throbber_widgets_tui::BOX_DRAWING;
 
-use crate::{GSWRError, app::App, git::branch::PRStatus, ui::footers::Footer};
+use crate::{
+  GSWRError, GitPlatform, app::App, git::branch::PRStatus, git_platforms::github::GitHub,
+  ui::footers::Footer,
+};
 
 pub mod footers;
 
@@ -18,10 +21,6 @@ pub(super) const MUTED: Color = Color::Rgb(90, 100, 120);
 const SELECTED_BG: Color = Color::Rgb(35, 45, 65);
 const TEXT: Color = Color::Rgb(190, 200, 220);
 const BORDER: Color = Color::Rgb(55, 65, 85);
-
-pub(super) const MERGED_PR: Color = Color::Rgb(100, 160, 255);
-const OPENED_PR: Color = Color::Rgb(100, 210, 130);
-pub(super) const CLOSED_PR: Color = Color::Rgb(180, 60, 60);
 
 fn truncate(s: &str, max_chars: usize) -> String {
   if max_chars == 0 {
@@ -76,10 +75,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
             Style::default().fg(MUTED),
           ),
           Some(defined_pr) => {
-            let (letter, color) = match defined_pr.status {
-              PRStatus::OPENED => ("O", OPENED_PR),
-              PRStatus::MERGED => ("M", MERGED_PR),
-              PRStatus::CLOSED => ("C", CLOSED_PR),
+            let color = GitHub::pr_status_color(&defined_pr.status);
+            let letter = match defined_pr.status {
+              PRStatus::OPENED => "O",
+              PRStatus::MERGED => "M",
+              PRStatus::CLOSED => "C",
             };
             (
               Cell::from(letter).style(Style::default().fg(color).bold()),
